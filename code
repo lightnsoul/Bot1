@@ -351,4 +351,4 @@ async def cat(ctx):
 
 #########
 keep_alive()
-bot.run("ODUyMTcyNDEwNDM4NTQ5NTI0.YMC9Zw.XLncWJyTTNMJ6o-cPCcy1X7Oy3A")
+bot.run("token")
