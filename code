@@ -1,0 +1,354 @@
+import discord
+import random
+from discord.utils import find, get
+import json
+from keep_alive import keep_alive
+import time
+import os
+import requests
+from discord import Game, Intents, Embed, Member, Colour, NotFound
+from discord.ext import commands, tasks
+import re
+
+intents = Intents().default()
+intents.members = True
+bot = commands.Bot('$', help_command=None, intents=intents, activity=Game(name='$help'))
+with open('users.json', 'r') as f:
+    users = json.load(f)
+
+list1 = ["sad", "depressed", "angry", "sob", "furious"]
+list2 = ["lol", "lmao", "XD"]
+
+def author_check(author):
+  if not author.bot:
+    return lambda message: message.author == author 
+
+def edit_users_file():
+  global users
+  with open('users.json', 'w') as f:
+    f.write(json.dumps(users, sort_keys=True, indent=2))
+
+# LEVELLING SYSTEM
+async def add_experience(message):
+  global users
+
+  user = message.author
+
+  if f'{user.guild.id}' not in users:
+    users[f'{user.guild.id}'] = {}
+
+  user_guild = users[f'{user.guild.id}']
+
+  if (not f'{user.id}' in user_guild) and (user.id != bot.user.id):
+    user_guild[f'{user.id}'] = {'experience': 0, 'level': 1}
+    user_guild[f'{user.id}']['experience'] += 6
+    edit_users_file()
+
+async def level_up(user, message):
+  global users
+
+  user_guild = users[f'{user.guild.id}']
+  experience = user_guild[f'{user.id}']["experience"]
+  lvl_start = user_guild[f'{user.id}']["level"]
+  lvl_end = int(experience**(1 / 4))
+
+  if (lvl_start < lvl_end) or ((experience == 6) and (lvl_start == 1)):
+    await message.channel.send(f':tada: Yay!!! {user} has reached **Level {lvl_end}**. Congrats! :tada:')
+
+    user_guild[f'{user.id}']["level"] = lvl_end
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is active!')
+
+@bot.command()
+async def hi(message):
+    await message.channel.send(f'Hello, {message.author.mention}!')
+
+@bot.command()
+async def wasup(ctx):
+    await ctx.send("Doing good man, thanks for asking!")
+
+@bot.command()
+async def numberchoice(ctx):
+    randommessage= ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    await ctx.send(f"{format(random.choice(randommessage))}")
+
+@bot.command()
+async def help(ctx):
+  emb = discord.Embed(
+    title="Help command", 
+    description="This is a list of all bot's commands", 
+    color = discord.Colour.green()
+  )
+  emb.add_field(name="$hi", value="Greet the bot", inline=False)
+  emb.add_field(name="$wasup", value="How's life?", inline=False)
+  emb.add_field(name="$numberchoice", value="Sends random number", inline=False)
+  emb.set_image(url="https://upload.wikimedia.org/wikipedia/commons/e/e0/Tools_clipart.png")
+  emb.set_author(name="You", url="https://dictionary.cambridge.org/dictionary/english/you", icon_url="https://www.shopyourtv.com/wp-content/uploads/2018/09/250px-You_Logo.jpg")
+  emb.set_image(url="https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png")
+  emb.set_thumbnail(url="https://www.seekpng.com/png/full/426-4263390_circulo-png-vermelho-circulo-vermelho-para-thumbnail.png")
+  emb.set_footer(text="This is a footer")
+  await ctx.send(embed=emb)
+
+@bot.command()
+async def test(ctx):
+  emb = discord.Embed()
+  emb.add_field(name="Test", value="Horizontal text", inline=True)
+  emb.add_field(name="Test", value="Horizontal text", inline=True)
+  emb.add_field(name="Test", value="Horizontal text", inline=True)
+  emb.add_field(name="Test", value="Horizontal text", inline=True)
+  await ctx.send(embed=emb)
+
+@bot.command()
+async def test2(ctx):
+  emb = discord.Embed()
+  emb.add_field(name="Test", value="Vertical text", inline=False)
+  emb.add_field(name="Test", value="Vertical text", inline=False)
+  emb.add_field(name="Test", value="Vertical text", inline=False)
+  emb.add_field(name="Test", value="Vertical text", inline=False)
+  await ctx.send(embed=emb)
+
+@bot.command()
+async def spam(ctx):
+  await ctx.send("Message 1")
+  await ctx.send("Message 2")
+  await ctx.send("Message 3")
+
+@bot.command()
+async def calmmessage(ctx):
+  await ctx.send("Message 1")
+  time.sleep(2)
+  await ctx.send("Message 2")
+  time.sleep(2)
+  await ctx.send("Message 3")
+
+@bot.command(name="hello", aliases=["greetings", "howdy", "sup"])
+async def grets(ctx):
+  reply = ["Hey hey buddy!", "Wasup mate?", "Hiiiii!!"]
+  ending = [" :D", " :star_struck:", ":)", " :grin:"]
+  await ctx.send(random.choice(reply) + "{}".format(random.choice(ending)))
+
+@bot.command(name="edit")
+async def message_func(ctx):
+  A = await ctx.send("1st version of the message")
+  time.sleep(1)
+  await A.edit(content="2nd version of the message")
+
+@bot.command(name="delete")
+async def message_func1(ctx):
+  A = await ctx.send("I like cats")
+  time.sleep(1)
+  await A.delete()
+
+@bot.command(name="countdown")
+async def message_func2(ctx):
+  A = await ctx.send("This message will be deleted in 3")
+  time.sleep(1)
+  await A.edit(content="This message will be deleted in 2")
+  time.sleep(1)
+  await A.edit(content="This message will be deleted in 1")
+  time.sleep(1)
+  await A.delete()
+
+@bot.command(name='choice')
+async def some_message(ctx):
+    await ctx.send("Choose the right answer:\n5-2=?\n**1**\n**3**")
+
+    msg = await bot.wait_for("message", check=author_check(ctx.author), timeout=30.0)
+    if msg.content == '1':
+        await ctx.send("Oops! Incorrect answer.")
+    elif msg.content == '3':
+        await ctx.send(
+            "Good job! You have answered right!"
+        )
+
+@bot.command()
+async def loading(ctx):
+  B = await ctx.send("<:Loading1:922425566005694465>")
+  time.sleep(1)
+  await B.edit(content="<:Loading2:922425567498862603>")
+  time.sleep(1)
+  await B.edit(content="<:Loading3:922425567763128340>")
+  time.sleep(1)
+  await B.edit(content="<:Loading4:922425568836845618>")
+
+@bot.command()
+async def emoji(ctx):
+  await ctx.send("<:Cool:922242290796347412>")
+
+@bot.command()
+async def link(ctx):
+  emb = discord.Embed(title="Message with a link", color = discord.Colour.blue())
+  emb.add_field(name="Links can be without hyperlinked word", value="https://unsplash.com/images/animals/cat", inline=False)
+  emb.add_field(name="Or with one", value="Click [here](https://unsplash.com/images/animals/cat)", inline=False)
+  emb.add_field(name="You can make hyperlinked more than 1 word...", value="Ice cream [is super, isn't it?](https://unsplash.com/images/animals/cat)", inline=False)
+  emb.add_field(name="Or even a whole sentence!", value="[Click here, to get a doughnut!](https://unsplash.com/images/animals/cat)", inline=False)
+  emb.add_field(name="To make a link look better, set it in ``", value="Like [`this`](https://unsplash.com/images/animals/cat)", inline=False)
+  await ctx.send(embed=emb)
+
+@bot.command()
+async def game(ctx):
+    dice = ["<:Dice1:922450211173969931>" , "<:Dice2:922450217150840853>", "<:Dice3:922450219046686750>", "<:Dice4:922450220380454913>", "<:Dice5:922450221336756264>", "<:Dice6:922450221319999539>"]
+    MSG = random.choice(dice)
+    MSG2 = random.choice(dice)
+    await ctx.send("Throwing dice...")
+    time.sleep(1)
+    await ctx.send(MSG)
+    await ctx.send(MSG2)
+    if MSG == MSG2:
+        await ctx.send(
+            "Lucky you!! You got the duplex!\nCongrats!")
+
+@bot.event
+async def on_command_error(ctx, error):
+  emb = discord.Embed(title="An Error Occured!", color = discord.Colour.red())
+  emb.add_field(name="Oops!", value=f"Could not process what you have ordered :(\n**{str(error)}**", inline=False)
+  emb.set_footer(text="Make sure you've typed the command correctly or use `$help` to see a list of all commands")
+  await ctx.send(embed=emb)
+
+@bot.command()
+async def calc(ctx, question: str = '"Nothing has been done"'):
+  try:
+    if re.match(r'^[\d+*\/()\^-]+$', question).group() == question:
+      return await ctx.send(
+        f"The answer is: \n> {eval(question.replace(' ', '').replace('^', '**'))}"
+      )
+
+    else:
+        return await ctx.send('Syntax Error')
+  except:
+    return await ctx.send('Syntax Error')
+
+@bot.command()
+async def code(ctx):
+  A = """```py
+This text might contain a code,
+which may be divided into many lines
+Which may be helpful while sending not a code,
+but a whole program, file.
+Just remember, that the bots have limitation in the message size
+Here's a nice example of the code:
+B = 5
+A = 3
+if B-A=2:
+  print("Wow")
+```"""
+  await ctx.send(A)
+
+@bot.listen('on_message')
+async def on_message_func(message):
+  if (not message.author == bot.user) and (not message.author.bot):
+
+    if message.content.endswith(tuple(list1)):
+      await message.channel.send(f"Cheer up {message.author.mention}! Everything is gonna be o-k-a-y!")
+    elif message.content.endswith(tuple(list2)):
+      await message.channel.send("lol")
+
+@bot.event
+async def on_member_join(member):
+    general = find(lambda x: x.name == 'general', member.guild.text_channels)
+    await member.send(f'''**Welcome, {member.mention}, to "`{member.guild}`"!**\nWe are so glad you've joined the server! Have a good day! :D''')
+    await general.send(f'''*Welcome, {member.mention}, to "`{member.guild}`"!**\nI recommend you to read our server's rules, to make your experience here super comfy!\nHave a super cool day! :sunglasses:''')
+
+@bot.event
+async def on_guild_join(guild):
+    general = find(lambda x: x.name == 'general',  guild.text_channels)
+    if general and general.permissions_for(guild.me).send_messages:
+      emb123 = Embed(title=f'_Hello {guild.name}!_', color = Colour.green())
+      emb123.add_field(name="Thank you for inviting me to your server!", value="Hello everybody! I'm here to cheer people up and communicate with other members! \nIf you need any help, use `$help` to see a list of all available commands!", inline=True)
+      await general.send(embed=emb123)
+
+@tasks.loop(minutes=1)
+async def called_once_a_minute():
+    target_channel_id = 922129945831026701
+    message_channel = bot.get_channel(target_channel_id)
+    print(f" Message to the {message_channel} was sent")
+    await message_channel.send("Your message")
+    
+@called_once_a_minute.before_loop
+async def before():
+    await bot.wait_until_ready()
+    print("Finished waiting")
+
+@bot.command()
+async def userinfo(ctx, user: Member):
+    emb14 = Embed(title=f"{user.display_name} info:",
+                          colour=Colour.dark_blue())
+    emb14.add_field(name="Name", value=f"{user}", inline=True)
+    emb14.add_field(name="ID", value=f"{user.id}", inline=False)
+    emb14.add_field(name="Created account", value=f"{user.created_at.strftime('**Date:** %d.%m.%Y ** | Time:** %H:%M:%S %p')}", inline=False)
+    emb14.add_field(name="Joined this server",
+                    value=f"{user.joined_at.strftime('**Date:** %d.%m.%Y **| Time:** %H:%M %p')}",
+                    inline=False)
+    emb14.set_thumbnail(url=user.avatar_url)
+    await ctx.send(embed=emb14)
+
+@bot.command()
+async def pfp(ctx, member: Member):
+    emb2 = Embed()
+    emb2.set_image(url=member.avatar_url)
+
+    await ctx.send(embed=emb2)
+
+@bot.command()
+async def botservers(ctx):
+    await ctx.send("I'm in:")
+    await ctx.send(str(len(bot.guilds)) + " servers!")
+
+@bot.command(name='num')
+async def some_n(ctx):
+    await ctx.send(random.randint(1, 1000))
+
+@bot.command(name="num_compare")
+async def n2(ctx):
+  N = await ctx.send(random.randint(1, 1000))
+  if N.content >= '500':
+    await ctx.send("This number is big")
+  elif N.content <= '500':
+    await ctx.send("This number is small")
+
+@bot.command(name='say')
+async def repeat_the_message(ctx, *, message):
+    await ctx.message.delete()
+    await ctx.send(message)
+
+@bot.command(name="copy")
+async def rpppt(ctx, *, arg):
+    await ctx.send(f"{ctx.author.mention} said:\n> {arg}")
+
+@bot.command()
+async def feedback(ctx, *, feedback=''):
+  author = ctx.author
+  guild = ctx.guild
+
+  try:
+    await ctx.message.delete()
+  except NotFound:
+    pass
+
+  if not feedback.strip():
+    await author.send('Please pass the feedback properly')
+    return
+
+  guilds_list = find(lambda x: x.name == "Your server name", bot.guilds)
+
+  bot_owner = find(lambda x: x.name == 'Your name', guilds_list.members)
+
+  await author.send(f'Thank you for pending your feedback!')
+  await bot_owner.send(f'{author.mention} from **{guild}** gave a feedback:\n> {feedback}')
+
+@bot.command()
+async def invite(message):
+  await message.author.send(
+    "Hello! I'm **your bot name** - a cool bot to make your server a bit more fun!"
+    "\n:link: invite link - invite me to your server!")
+
+@bot.command()
+async def cat(ctx):
+    r = requests.get('https://api.thecatapi.com/v1/images/search').json()
+    await ctx.send(r[0]['url'])
+
+#########
+keep_alive()
+bot.run("ODUyMTcyNDEwNDM4NTQ5NTI0.YMC9Zw.XLncWJyTTNMJ6o-cPCcy1X7Oy3A")
